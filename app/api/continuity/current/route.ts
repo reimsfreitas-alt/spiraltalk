@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {createServerSupabaseClient} from "@/lib/supabase/server";
+export async function GET(){const s=await createServerSupabaseClient();const {data:{user}}=await s.auth.getUser();if(!user)return NextResponse.json({error:"Não autenticado"},{status:401});const {data}=await s.from("continuity_states").select("*").eq("user_id",user.id).order("updated_at",{ascending:false}).limit(1).maybeSingle();return NextResponse.json({continuity:data||null})}
