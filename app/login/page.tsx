@@ -1,7 +1,7 @@
 "use client";
 import { createClient } from "@/lib/supabase/client";
 
-const PRODUCTION_URL = "https://spiraltalk-spiral-codes.vercel.app";
+const PRODUCTION_URL = "https://spiraltalk.vercel.app";
 
 export default function LoginPage() {
   const login = async () => {
