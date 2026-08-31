@@ -10,10 +10,7 @@ function contextualFallback(input:string): string {
   const text=input.trim().replace(/\s+/g," ");
   if(!text) return "Pode falar. Estou acompanhando.";
   const excerpt=text.length>180?text.slice(0,177)+"…":text;
-  const question=/\b(por que|porque|como|devo|deveria|será|seria|não sei|não consigo|preciso|quero|medo|difícil|difícil)\b/i.test(text)
-    ? "O que, nessa situação, mais mexe com você agora?"
-    : "Quando você pensa nisso com mais calma, o que aparece primeiro?";
-  return `Você trouxe isto: “${excerpt}”\n\nQuero ficar nessa parte com você, sem tentar resolver tudo de uma vez. ${question}`;
+  return `Você trouxe isto: “${excerpt}”. Não quero correr para uma conclusão. O que nessa experiência você gostaria de olhar mais de perto agora?`;
 }
 
 export async function runCanonicalEngine(history:{role:"user"|"assistant";content:string}[],input:string):Promise<SpiralEngineOutput>{
