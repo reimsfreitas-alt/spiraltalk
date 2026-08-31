@@ -1,0 +1,3 @@
+"use client";
+import {useRouter,useSearchParams} from "next/navigation";import {useEffect,useState} from "react";
+export default function NewChat(){const r=useRouter();const q=useSearchParams();const [topic,setTopic]=useState(q.get("topic")||`topic-${Date.now()}`);useEffect(()=>{const make=async()=>{const x=await fetch("/api/session/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({topicKey:topic})});const d=await x.json();if(d.sessionId) r.replace(`/chat/${d.sessionId}`)};make()},[]);return <main className="min-h-screen flex items-center justify-center p-6"><p className="text-zinc-400">Abrindo conversa…</p></main>}
