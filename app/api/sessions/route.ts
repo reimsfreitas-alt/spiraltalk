@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {createServerSupabaseClient} from "@/lib/supabase/server";
+export async function GET(){const s=await createServerSupabaseClient();const {data:{user}}=await s.auth.getUser();if(!user)return NextResponse.json({error:"Não autenticado"},{status:401});const {data,error}=await s.from("sessions").select("id,title,status,created_at,topic_key").eq("user_id",user.id).order("created_at",{ascending:false});if(error)return NextResponse.json({error:"Banco indisponível"},{status:500});return NextResponse.json({sessions:data||[]})}
