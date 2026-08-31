@@ -1,4 +1,41 @@
-export type DecisionState="decision"|"intention"|"possibility"|"doubt"|"hypothesis"|"none";
-export interface SpiralStructure { central_question:string; declared_factors:string[]; constraints:string[]; alternatives:string[]; decision_state:DecisionState; declared_decision:string|null; open_questions:string[]; declared_changes:string[]; memory_candidates:string[]; confidence:number; }
-export interface ContinuityState { id?:string; user_id?:string; topic_key?:string; central_question:string; active_factors:string[]; constraints:string[]; alternatives:string[]; declared_decision:string|null; open_questions:string[]; declared_changes:string[]; last_summary?:string|null; updated_at?:string; }
-export interface SpiralEngineOutput { reply:string; structure:SpiralStructure; safety_state:"normal"|"risk_detected"; }
+export type DecisionState =
+  | "decision"
+  | "intention"
+  | "possibility"
+  | "doubt"
+  | "hypothesis"
+  | "none";
+
+export interface SpiralStructure {
+  central_question: string;
+  declared_factors: string[];
+  constraints: string[];
+  alternatives: string[];
+  decision_state: DecisionState;
+  declared_decision: string | null;
+  open_questions: string[];
+  declared_changes: string[];
+  memory_candidates: string[];
+  confidence: number;
+}
+
+export interface ContinuityState {
+  id?: string;
+  user_id?: string;
+  topic_key?: string;
+  central_question: string;
+  active_factors: string[];
+  constraints: string[];
+  alternatives: string[];
+  declared_decision: string | null;
+  open_questions: string[];
+  declared_changes: string[];
+  last_summary?: string | null;
+  updated_at?: string;
+}
+
+export interface SpiralEngineOutput {
+  reply: string;
+  structure: SpiralStructure;
+  safety_state: "normal" | "risk_detected";
+}
