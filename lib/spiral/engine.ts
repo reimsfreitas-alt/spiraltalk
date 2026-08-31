@@ -3,11 +3,21 @@ import { SYSTEM_PROMPT } from "./prompt";
 import type { SpiralEngineOutput, SpiralStructure } from "./types";
 
 function fallback(input:string): SpiralStructure {
-  return {central_question:input.slice(0,120),declared_factors:[],constraints:[],alternatives:[],decision_state:"none",declared_decision:null,open_questions:[],declared_changes:[],memory_candidates:[],confidence:0.1};
+  return {central_question:input.slice(0,180),declared_factors:[],constraints:[],alternatives:[],decision_state:"none",declared_decision:null,open_questions:[],declared_changes:[],memory_candidates:[],confidence:0.05};
+}
+
+function contextualFallback(input:string): string {
+  const text=input.trim().replace(/\s+/g," ");
+  if(!text) return "Pode falar. Estou acompanhando.";
+  const excerpt=text.length>180?text.slice(0,177)+"…":text;
+  const question=/\b(por que|porque|como|devo|deveria|será|seria|não sei|não consigo|preciso|quero|medo|difícil|difícil)\b/i.test(text)
+    ? "O que, nessa situação, mais mexe com você agora?"
+    : "Quando você pensa nisso com mais calma, o que aparece primeiro?";
+  return `Você trouxe isto: “${excerpt}”\n\nQuero ficar nessa parte com você, sem tentar resolver tudo de uma vez. ${question}`;
 }
 
 export async function runCanonicalEngine(history:{role:"user"|"assistant";content:string}[],input:string):Promise<SpiralEngineOutput>{
-  if(!process.env.GEMINI_API_KEY) return {reply:"Entendi. Vamos organizar o que você trouxe. Qual é o ponto principal que você quer colocar em foco agora?",structure:fallback(input),safety_state:"normal"};
+  if(!process.env.GEMINI_API_KEY) return {reply:contextualFallback(input),structure:fallback(input),safety_state:"normal"};
   const ai=new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY});
   const contents=[...history.slice(-12),{role:"user" as const,content:input}].map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]}));
   try{
@@ -17,6 +27,6 @@ export async function runCanonicalEngine(history:{role:"user"|"assistant";conten
     if(parsed?.structure?.decision_state!=="decision") parsed.structure.declared_decision=null;
     return parsed;
   }catch{
-    return {reply:"Não consegui processar esta mensagem agora. Tente novamente.",structure:fallback(input),safety_state:"normal"};
+    return {reply:contextualFallback(input),structure:fallback(input),safety_state:"normal"};
   }
 }
