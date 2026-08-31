@@ -13,6 +13,7 @@ export async function runCanonicalEngine(history:{role:"user"|"assistant";conten
   try{
     const r=await ai.models.generateContent({model:"gemini-2.5-flash",config:{systemInstruction:SYSTEM_PROMPT,responseMimeType:"application/json"},contents});
     const parsed=JSON.parse(r.text||"{}");
+    if(!parsed || typeof parsed.reply!=="string" || !parsed.structure || typeof parsed.structure!=="object") throw new Error("Invalid Gemini response");
     if(parsed?.structure?.decision_state!=="decision") parsed.structure.declared_decision=null;
     return parsed;
   }catch{
