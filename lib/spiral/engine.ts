@@ -4,85 +4,83 @@ import { choosePacing, violatesConversationalRestraint, type PacingDecision } fr
 import type { SpiralEngineOutput, SpiralStructure } from "./types";
 
 type HistoryMessage = { role: "user" | "assistant"; content: string };
+const MAX_HISTORY = 10;
+const RECENT = 3;
 
-function fallback(input: string): SpiralStructure {
+function emptyStructure(input: string): SpiralStructure {
   return { central_question: input.slice(0, 180), declared_factors: [], constraints: [], alternatives: [], decision_state: "none", declared_decision: null, open_questions: [], declared_changes: [], memory_candidates: [], confidence: 0.05 };
 }
 
-function contextualFallback(input: string, pacing: PacingDecision): string {
-  const text = input.trim().replace(/\s+/g, " ");
-  if (!text) return "Pode falar. Estou aqui.";
-  if (/\b(ganhar dinheiro|faturar|dinheiro|caixa|receita|vender|vendas)\b/i.test(text)) {
-    return "Tem uma urgência muito concreta aí: fazer o que você está criando acontecer. O que está pesando mais nessa urgência agora?";
-  }
-  if (/\b(cansad[oa]|exaust[oa]|esgotad[oa]|sem energia)\b/i.test(text)) {
-    return "Tem um cansaço importante aparecendo no que você trouxe. O que está consumindo mais de você neste momento?";
-  }
-  if (/\b(medo|receio|apreens[aã]o|ansiedade|ansios[oa])\b/i.test(text)) {
-    return "Tem alguma coisa aí que está ganhando peso enquanto você fala. Onde isso aperta mais agora?";
-  }
-  if (/\b(sonh[eiou]|sonho|inf[aâ]ncia|crian[cç]a|escola|quando eu era)\b/i.test(text)) {
-    return "Essa lembrança abriu uma porta para outra parte da sua história. O que aparece primeiro quando você fica mais perto dela?";
-  }
-  if (pacing.state === "holding") return "Pode continuar. Estou acompanhando sem pressa.";
-  if (pacing.state === "pivoting") return "Pode seguir por aí. Não precisamos puxar o assunto anterior de volta.";
-  if (pacing.state === "closing") return "Pode deixar isso repousar um pouco. Não precisamos fechar agora.";
-  return "Tem algo importante nessa fala. Pode continuar por onde isso estiver pedindo para ir.";
+function fallback(history: HistoryMessage[], input: string, pacing: PacingDecision): SpiralEngineOutput {
+  const text = input.trim();
+  let reply: string;
+  if (!text) reply = "Pode começar pelo ponto que estiver mais vivo agora.";
+  else if (pacing.act === "CLOSE") reply = "Tudo bem deixar isso por aqui.";
+  else if (pacing.act === "CONTRADICT") reply = "Então eu fui para um lugar que não era esse.";
+  else if (pacing.act === "ADVICE_SEEK") reply = "Antes de decidir o que fazer, vale separar o problema que você quer resolver daquilo que está tornando essa decisão difícil.";
+  else if (pacing.act === "SHIFT") reply = "Vamos acompanhar essa mudança de direção sem puxar o assunto anterior de volta.";
+  else if (pacing.act === "QUESTION") reply = "A pergunta que você trouxe merece ser olhada pelo que a fez aparecer agora.";
+  else if (pacing.act === "ELABORATE") reply = "Tem mais coisa se formando aí. Pode continuar a partir do que mudou agora.";
+  else reply = "Você pode continuar a partir daí, sem precisar organizar isso antes.";
+  return { reply, structure: emptyStructure(text), safety_state: "normal", conversation_state: pacing.state };
 }
 
-function buildFallback(history: HistoryMessage[], input: string): SpiralEngineOutput {
-  const pacing = choosePacing({ history, input });
-  return { reply: contextualFallback(input, pacing), structure: fallback(input), safety_state: "normal", conversation_state: pacing.state };
+function promptFor(pacing: PacingDecision, history: HistoryMessage[]): string {
+  const previous = history.filter(m => m.role === "assistant").slice(-RECENT);
+  const prior = previous.length ? `\nÚLTIMAS INTERVENÇÕES (NÃO REPITA A MESMA FUNÇÃO):\n${previous.map((m,i)=>`${i+1}. ${m.content}`).join("\n")}` : "";
+  const state = ({
+    holding: "Dê espaço. Uma observação curta pode ser melhor que uma pergunta.",
+    mirroring: "Responda ao conteúdo concreto. Não faça pergunta apenas para manter o turno.",
+    deepening: "Aprofunde somente um fio que já apareceu; prefira intervenção mínima.",
+    juxtaposing: "Coloque elementos declarados pelo usuário lado a lado; não diagnostique.",
+    pivoting: "Acompanhe a nova direção sem puxar o assunto anterior de volta.",
+    closing: "Encerre com sobriedade e não reabra o tema."
+  } as Record<string,string>)[pacing.state];
+  return `${SYSTEM_PROMPT}\n\nATO ATUAL: ${pacing.act}\nESTADO: ${pacing.state}\n${state}\n\nREGRAS: responda ao conteúdo novo; não use abertura genérica; não repita intervenção anterior; no máximo uma pergunta e somente se houver ganho real; pedido de conselho não autoriza prescrição; correção do usuário invalida a hipótese anterior; não invente fatos, memória ou causalidade; prefira 1–3 frases; seja específico.${prior}`;
 }
 
-function pacingInstruction(pacing: PacingDecision): string {
-  switch (pacing.state) {
-    case "holding": return "ESTADO HOLDING: a pessoa pode ainda estar elaborando. Não pressione por conclusão. Não é obrigatório fazer pergunta.";
-    case "pivoting": return "ESTADO PIVOTING: acompanhe a nova direção. Não force o assunto anterior de volta.";
-    case "juxtaposing": return "ESTADO JUXTAPOSING: coloque elementos que a própria pessoa declarou lado a lado, com delicadeza. Não acuse contradição e não cobre explicação.";
-    case "mirroring": return "ESTADO MIRRORING: responda primeiro ao conteúdo concreto. Pergunte só se houver ganho real de elaboração.";
-    case "closing": return "ESTADO CLOSING: favoreça decantação. Não transforme o fim em relatório, tarefa ou checklist.";
-    default: return "ESTADO DEEPENING: procure a intervenção mínima que aumente a capacidade da própria pessoa de continuar pensando.";
+function tooSimilar(candidate: string, recent: string[]): boolean {
+  const n = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+  const words = (s: string) => new Set(n(s).split(" ").filter(Boolean));
+  const a = words(candidate);
+  for (const r of recent.slice(-RECENT)) {
+    const b = words(r);
+    if (n(candidate) === n(r)) return true;
+    const union = new Set([...a, ...b]).size;
+    const common = [...a].filter(x => b.has(x)).length;
+    if (union && common / union >= 0.72) return true;
+    if ([...a].slice(0,4).join(" ") === [...b].slice(0,4).join(" ") && a.size < 20 && b.size < 20) return true;
   }
+  return false;
 }
 
-function hardenSystemPrompt(pacing: PacingDecision, recentAssistant: string): string {
-  return `${SYSTEM_PROMPT}\n\nDIRETRIZ DE RITMO:\n${pacingInstruction(pacing)}\n\nRESTRIÇÕES OPERACIONAIS:\n- Responda ao conteúdo concreto desta mensagem.\n- Não use abertura genérica só porque uma nova mensagem chegou.\n- Não use perguntas automáticas.\n- Não repita a mesma estrutura das últimas respostas.\n- Não faça mais de uma pergunta nesta rodada.\n- Não invente memória, causalidade, trauma, emoção ou intenção.\n- Se a pessoa estiver continuando uma narrativa, não a interrompa com interrogatório.\n- A melhor resposta pode ser curta, pode conter uma pergunta ou pode não conter nenhuma.\n- Não transforme a conversa em formulário.\n\nRESPOSTA ANTERIOR DA SPIRAL (somente para evitar repetição):\n${recentAssistant || "(nenhuma)"}`;
-}
-
-function normalizeResult(parsed: any, pacing: PacingDecision): SpiralEngineOutput {
-  if (!["holding", "mirroring", "deepening", "juxtaposing", "pivoting", "closing"].includes(parsed?.conversation_state)) parsed.conversation_state = pacing.state;
-  if (parsed?.structure?.decision_state !== "decision") parsed.structure.declared_decision = null;
-  return parsed as SpiralEngineOutput;
+function validate(reply: string, pacing: PacingDecision, history: HistoryMessage[]): boolean {
+  if (!reply || violatesConversationalRestraint(reply)) return false;
+  if (!pacing.shouldAskQuestion && reply.includes("?")) return false;
+  if ((reply.match(/\?/g) || []).length > 1) return false;
+  if (tooSimilar(reply, history.filter(m => m.role === "assistant").map(m => m.content))) return false;
+  return true;
 }
 
 export async function runCanonicalEngine(history: HistoryMessage[], input: string): Promise<SpiralEngineOutput> {
   const pacing = choosePacing({ history, input });
-  if (!process.env.GEMINI_API_KEY) return buildFallback(history, input);
-
+  if (!process.env.GEMINI_API_KEY) return fallback(history, input, pacing);
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const contents = [...history.slice(-12), { role: "user" as const, content: input }].map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
-  const recentAssistant = [...history].reverse().find((m) => m.role === "assistant")?.content ?? "";
-
+  const contents = [...history.slice(-MAX_HISTORY), { role: "user" as const, content: input }].map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
   try {
-    const r = await ai.models.generateContent({ model: "gemini-2.5-flash", config: { systemInstruction: hardenSystemPrompt(pacing, recentAssistant), responseMimeType: "application/json" }, contents });
-    const parsed = JSON.parse(r.text || "{}");
-    if (!parsed || typeof parsed.reply !== "string" || !parsed.structure || typeof parsed.structure !== "object") throw new Error("Invalid Gemini response");
-    const normalized = normalizeResult(parsed, pacing);
-    if (violatesConversationalRestraint(normalized.reply)) {
-      const retry = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        config: { systemInstruction: `${hardenSystemPrompt(pacing, recentAssistant)}\n\nA resposta anterior falhou no teste de naturalidade. Gere outra. Ela precisa soar específica para esta fala, sem clichês, sem resumo mecânico e sem pergunta automática.`, responseMimeType: "application/json" },
-        contents,
-      });
-      const repaired = JSON.parse(retry.text || "{}");
-      if (repaired && typeof repaired.reply === "string" && repaired.structure) return normalizeResult(repaired, pacing);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const suffix = attempt ? "\nA resposta anterior foi rejeitada. Gere outra com estrutura diferente e mais específica ao turno atual." : "";
+      const r = await ai.models.generateContent({ model: "gemini-2.5-flash", config: { systemInstruction: promptFor(pacing, history) + suffix, responseMimeType: "application/json" }, contents });
+      const parsed = JSON.parse(r.text || "{}");
+      const reply = String(parsed?.reply || "").trim();
+      if (validate(reply, pacing, history)) {
+        const structure = parsed.structure && typeof parsed.structure === "object" ? parsed.structure : emptyStructure(input);
+        if (structure.decision_state !== "decision") structure.declared_decision = null;
+        return { reply, structure, safety_state: parsed.safety_state === "risk_detected" ? "risk_detected" : "normal", conversation_state: ["holding","mirroring","deepening","juxtaposing","pivoting","closing"].includes(parsed.conversation_state) ? parsed.conversation_state : pacing.state };
+      }
     }
-    return normalized;
   } catch {
-    return buildFallback(history, input);
+    // Use an explicit non-deceptive fallback below.
   }
+  return fallback(history, input, pacing);
 }
