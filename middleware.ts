@@ -21,7 +21,7 @@ export async function middleware(request: NextRequest) {
 
   if (path === "/") return response;
 
-  const protectedPath = path.startsWith("/chat") || path === "/fundador";
+  const protectedPath = path === "/fundador";
   if (!user && protectedPath) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", path);
