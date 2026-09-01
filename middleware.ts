@@ -19,15 +19,18 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
 
-  // Public acquisition surface: visitors must be able to see the offer
-  // and reach the Stripe checkout without signing in first.
   if (path === "/") return response;
 
-  const protectedPath = path.startsWith("/chat");
-  if (!user && protectedPath) return NextResponse.redirect(new URL("/login", request.url));
+  const protectedPath = path.startsWith("/chat") || path === "/fundador";
+  if (!user && protectedPath) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("next", path);
+    return NextResponse.redirect(loginUrl);
+  }
+
   if (user && path === "/login") return NextResponse.redirect(new URL("/", request.url));
 
   return response;
 }
 
-export const config = { matcher: ["/", "/login", "/chat/:path*"] };
+export const config = { matcher: ["/", "/login", "/fundador", "/chat/:path*"] };
