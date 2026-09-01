@@ -50,7 +50,7 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLoading(true);
     try {
-      const r = await fetch("/api/spiral/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: params.sessionId, input: text }) });
+      const r = await fetch("/api/spiral/public", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input: text, history: messages }) });
       const d = await r.json().catch(() => ({}));
       if (r.ok && ["holding", "mirroring", "deepening", "juxtaposing", "pivoting", "closing"].includes(d.conversation_state)) setConversationState(d.conversation_state);
       setMessages((m) => [...m, { role: "assistant", content: r.ok ? d.reply : d.error || "Não foi possível processar agora." }]);
