@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Message = { role: "user" | "assistant"; content: string };
+type ConversationState = "holding" | "mirroring" | "deepening" | "juxtaposing" | "pivoting" | "closing";
 type SpeechRecognitionEventLike = Event & { results: { [index: number]: { [index: number]: { transcript: string; isFinal?: boolean } } } };
 type SpeechRecognitionLike = {
   lang: string;
@@ -32,13 +33,15 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
   const [listening, setListening] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [voiceSupported, setVoiceSupported] = useState(true);
+  const [conversationState, setConversationState] = useState<ConversationState>("deepening");
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-  const transcriptRef = useRef("");
+  const shouldKeepListeningRef = useRef(false);
   const router = useRouter();
 
   useEffect(() => {
     setVoiceSupported(Boolean(typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition)));
     return () => {
+      shouldKeepListeningRef.current = false;
       recognitionRef.current?.stop();
       if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     };
@@ -57,6 +60,9 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
         body: JSON.stringify({ sessionId: params.sessionId, input: text }),
       });
       const d = await r.json().catch(() => ({}));
+      if (r.ok && ["holding", "mirroring", "deepening", "juxtaposing", "pivoting", "closing"].includes(d.conversation_state)) {
+        setConversationState(d.conversation_state);
+      }
       setMessages((m) => [
         ...m,
         { role: "assistant", content: r.ok ? d.reply : d.error || "Não foi possível processar agora." },
@@ -71,6 +77,7 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
   const toggleMic = () => {
     if (typeof window === "undefined") return;
     if (listening) {
+      shouldKeepListeningRef.current = false;
       recognitionRef.current?.stop();
       setListening(false);
       return;
@@ -83,21 +90,33 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
     }
 
     const recognition = new Recognition();
-    transcriptRef.current = "";
+    shouldKeepListeningRef.current = true;
     recognition.lang = "pt-BR";
     recognition.interimResults = true;
     recognition.continuous = true;
     recognition.onresult = (event) => {
       let transcript = "";
       const resultList = event.results || {};
-      for (let i = 0; resultList[i]; i += 1) {
-        transcript += resultList[i][0]?.transcript || "";
-      }
-      transcriptRef.current = transcript.trim();
-      setInput(transcriptRef.current);
+      for (let i = 0; resultList[i]; i += 1) transcript += resultList[i][0]?.transcript || "";
+      setInput(transcript.trim());
     };
-    recognition.onend = () => setListening(false);
-    recognition.onerror = () => setListening(false);
+    recognition.onend = () => {
+      if (!shouldKeepListeningRef.current) {
+        setListening(false);
+        return;
+      }
+      window.setTimeout(() => {
+        try {
+          recognition.start();
+          setListening(true);
+        } catch {
+          setListening(false);
+        }
+      }, 120);
+    };
+    recognition.onerror = () => {
+      if (!shouldKeepListeningRef.current) setListening(false);
+    };
     recognitionRef.current = recognition;
     recognition.start();
     setListening(true);
@@ -120,6 +139,8 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
   };
 
   const close = async () => {
+    shouldKeepListeningRef.current = false;
+    recognitionRef.current?.stop();
     await fetch("/api/session/close", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -129,7 +150,7 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
   };
 
   return (
-    <main className="talk-shell">
+    <main className={`talk-shell state-${conversationState}`}>
       <header className="talk-header">
         <div className="brand-block">
           <div className={`brand-orb ${listening ? "orb-listening" : ""}`} aria-hidden="true">
@@ -154,6 +175,11 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
           <div className="welcome-pills">
             <span>sem julgamento</span><span>sem pressa</span><span>uma coisa de cada vez</span>
           </div>
+        </div>
+
+        <div className="presence-bar" aria-live="polite">
+          <span className="presence-orb" aria-hidden="true" />
+          <span>{conversationState === "holding" ? "Pode continuar." : conversationState === "pivoting" ? "Pode seguir por aí." : "Estou acompanhando."}</span>
         </div>
 
         <div className="message-list" aria-live="polite">
