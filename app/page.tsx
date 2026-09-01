@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import Link from "next/link";
 
-const paymentLink = process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK;
+const paymentLink = process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK || "https://buy.stripe.com/aFa00c0s3eMM2BxeqvbbG03";
 
 export default async function Page() {
   const s = await createServerSupabaseClient();
