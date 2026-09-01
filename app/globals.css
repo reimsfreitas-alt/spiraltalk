@@ -9,7 +9,9 @@ body{min-height:100vh}
 button,input,textarea{font:inherit}
 button{cursor:pointer}
 
-.talk-shell{min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 0%,rgba(196,155,98,.16),transparent 30%),linear-gradient(180deg,#f7f2ea 0%,#efe8df 100%)}
+.talk-shell{min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(circle at 50% 0%,rgba(196,155,98,.16),transparent 30%),linear-gradient(180deg,#f7f2ea 0%,#efe8df 100%);transition:background .7s ease}
+.talk-shell.state-holding{background:radial-gradient(circle at 50% 4%,rgba(196,155,98,.11),transparent 24%),linear-gradient(180deg,#f6f1e9 0%,#ece5dc 100%)}
+.talk-shell.state-juxtaposing{background:radial-gradient(circle at 50% 0%,rgba(154,111,56,.13),transparent 28%),linear-gradient(180deg,#f7f2ea 0%,#eee6dc 100%)}
 .talk-header{height:74px;border-bottom:1px solid rgba(221,212,200,.9);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;background:rgba(247,242,234,.86);backdrop-filter:blur(18px);z-index:10}
 .brand-block{display:flex;align-items:center;gap:12px;min-width:0}
 .brand-orb{width:40px;height:40px;border-radius:50%;position:relative;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#fff6e9 0,#d6b27c 48%,#8f6231 100%);box-shadow:0 8px 26px rgba(123,91,54,.18)}
@@ -20,9 +22,12 @@ button{cursor:pointer}
 .ghost-button{background:rgba(251,248,243,.72);border:1px solid var(--line);color:var(--muted);padding:9px 14px;border-radius:999px}.ghost-button:hover{color:var(--text);border-color:#c9bbaa}
 
 .talk-body{width:min(860px,100%);margin:0 auto;padding:34px 22px 166px;flex:1}
-.welcome-panel{position:relative;overflow:hidden;border:1px solid rgba(221,212,200,.95);background:rgba(251,248,243,.88);border-radius:28px;padding:34px 32px 30px;margin-bottom:30px;box-shadow:0 22px 65px rgba(81,59,37,.10)}
+.welcome-panel{position:relative;overflow:hidden;border:1px solid rgba(221,212,200,.95);background:rgba(251,248,243,.88);border-radius:28px;padding:34px 32px 30px;margin-bottom:24px;box-shadow:0 22px 65px rgba(81,59,37,.10)}
 .welcome-glow{position:absolute;right:-40px;top:-50px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle,rgba(196,155,98,.23),transparent 68%)}
 .welcome-kicker{font-size:11px;letter-spacing:.18em;color:var(--accent);font-weight:760;position:relative}.welcome-panel h1{font-size:clamp(31px,5vw,46px);line-height:1.04;margin:14px 0 12px;font-weight:540;letter-spacing:-.04em;max-width:720px;position:relative}.welcome-panel p{margin:0;color:#6c645b;font-size:16px;line-height:1.65;max-width:650px;position:relative}.welcome-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;position:relative}.welcome-pills span{font-size:11px;padding:7px 10px;border-radius:999px;background:#f1e7d9;color:#7b6041;border:1px solid #eadcc9}
+
+.presence-bar{display:flex;align-items:center;justify-content:center;gap:8px;color:#8b7c6d;font-size:11px;min-height:24px;margin:0 auto 16px;opacity:.88;transition:opacity .4s ease,transform .4s ease}.presence-orb{width:7px;height:7px;border-radius:50%;background:#b58c5b;box-shadow:0 0 0 5px rgba(181,140,91,.08);animation:presence-pulse 2.2s ease-in-out infinite}@keyframes presence-pulse{50%{transform:scale(1.2);opacity:.55}}
+.state-holding .presence-bar{opacity:.58}.state-holding .presence-orb{animation-duration:3.6s}.state-juxtaposing .presence-bar{transform:translateY(-1px)}
 
 .message-list{display:flex;flex-direction:column;gap:18px}.message-row{display:flex}.message-row.user{justify-content:flex-end}.message-card{max-width:min(730px,94%);border-radius:22px;padding:15px 17px;font-size:16px;line-height:1.7;display:flex;gap:11px}.message-card.assistant{background:rgba(251,248,243,.84);border:1px solid var(--line);box-shadow:0 12px 32px rgba(81,59,37,.07)}.message-card.user{background:#332b23;color:#fffaf2;border:1px solid #332b23;box-shadow:0 12px 28px rgba(63,46,30,.12)}
 .message-avatar{flex:0 0 30px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#fff6e9 0,#d6b27c 48%,#8f6231 100%);color:#5e452a;font-size:11px;font-weight:800;margin-top:2px}.pulse-avatar{animation:orb-breathe 1.5s ease-in-out infinite}.message-content{min-width:0}.message-label{font-size:10px;letter-spacing:.16em;font-weight:760;margin-bottom:6px;opacity:.62}.message-card.user .message-label{color:#dbc9b4}.message-card.user{align-items:flex-start}
