@@ -1,10 +1,6 @@
-import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-
-export default async function FounderAccessPage() {
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login?next=/fundador");
-  redirect("/chat/new");
+"use client";
+import { useRouter } from "next/navigation";
+export default function FounderEntry(){
+ const router=useRouter();
+ return <main className="min-h-screen flex items-center justify-center p-6"><button onClick={()=>router.replace("/chat/founder")} className="w-full max-w-md rounded-lg bg-white text-black py-3">Entrar como fundador · testar</button></main>;
 }
