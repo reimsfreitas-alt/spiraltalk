@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-const paymentLink = process.env.NEXT_PUBLIC_STRIPE_PAYMENT_LINK || "https://buy.stripe.com/aFa00c0s3eMM2BxeqvbbG03";
-
 export default function Page() {
   return (
     <main className="room-shell launch-room">
@@ -33,9 +31,6 @@ export default function Page() {
         </div>
 
         <div className="launch-action">
-          <a className="launch-cta" href={paymentLink} aria-label="Começar Spiral Talk por R$ 29,90 por mês">
-            Começar por R$ 29,90/mês
-          </a>
           <Link className="launch-login" href="/login">
             Já assina? Entrar
           </Link>
