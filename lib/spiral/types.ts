@@ -6,6 +6,14 @@ export type DecisionState =
   | "hypothesis"
   | "none";
 
+export type ConversationState =
+  | "holding"
+  | "mirroring"
+  | "deepening"
+  | "juxtaposing"
+  | "pivoting"
+  | "closing";
+
 export interface SpiralStructure {
   central_question: string;
   declared_factors: string[];
@@ -38,4 +46,5 @@ export interface SpiralEngineOutput {
   reply: string;
   structure: SpiralStructure;
   safety_state: "normal" | "risk_detected";
+  conversation_state: ConversationState;
 }
