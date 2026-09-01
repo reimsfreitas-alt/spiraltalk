@@ -31,8 +31,8 @@ export default function Page() {
         </div>
 
         <div className="launch-action">
-          <Link className="launch-login" href="/login">
-            Já assina? Entrar
+          <Link className="launch-login" href="/chat/new">
+            Entrar e testar
           </Link>
         </div>
 
