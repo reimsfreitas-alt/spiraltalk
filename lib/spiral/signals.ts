@@ -11,7 +11,7 @@ export function extractSignals(input:string, act:ConversationalAct):HumanSignal 
   const correction=act==="CONTRADICT", closing=act==="CLOSE";
   const revelation=/\b(percebi|descobri|lembrei|nunca contei|agora entendi|me dei conta)\b/i.test(text);
   const contradiction=/\b(mas|porém|só que|ao mesmo tempo|por outro lado|entretanto)\b/i.test(text);
-  const directAction=/\b(o que faço|o que devo fazer|como resolvo|qual caminho|me ajuda a decidir|devo fazer|o que você faria)\b/i.test(text);
+  const directAction=/\b(o que faço|o que devo fazer|como resolvo|como resolver|qual caminho|me ajuda a decidir|o que você faria|devo fazer|que solução|que soluçao|tem alguma solução|tem alguma soluçao|o que pode ajudar|como posso melhorar|como melhorar)\b/i.test(text);
   const intent:SignalIntent=directAction?"decide":question?"answer":words.length>=35?"be_heard":contradiction?"organize":"be_heard";
   const topics=Array.from(new Set((text.match(topicWords)||[]).map(x=>x.toLowerCase())));
   const ambiguity=Math.min(1,Math.max(0,(text.match(/\b(acho|talvez|não sei|nao sei|parece|pode ser|será)\b/gi)||[]).length/Math.max(1,words.length/10)));
