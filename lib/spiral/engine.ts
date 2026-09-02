@@ -25,7 +25,7 @@ function fallback(input:string,pacing:PacingDecision,policy:string):SpiralEngine
  else if(policy==="pivot")reply="Vamos acompanhar essa nova direção.";
  else if(/\b(dormindo|sono|noites mal dormidas|calor|stress|estresse)\b/i.test(text))
   reply="Você está percebendo duas hipóteses bem concretas — calor e estresse — e as duas podem estar misturadas. Antes de procurar uma explicação maior, vale observar qual delas aparece com mais força nas noites em que o sono piora.";
- else if(signals.intent==="be_heard" && signals.topic.length)
+ else if(/\b(trabalho|dinheiro|família|familia|relacionamento|amor|casa|decisão|decisao|carreira)\b/i.test(text))
   reply="Tem um ponto concreto no que você trouxe, e eu não vou empurrá-lo de volta para você com uma pergunta automática. Pode continuar; eu vou acompanhar o fio do que você está dizendo.";
  else reply="Estou acompanhando o que você trouxe.";
  return{reply,structure:emptyStructure(text),safety_state:"normal",conversation_state:pacing.state};
