@@ -31,7 +31,7 @@ export default function Page() {
         </div>
 
         <div className="launch-action">
-          <Link className="launch-login" href="/chat/new">
+          <Link className="launch-cta" href="/chat/founder" aria-label="Entrar e testar o Spiral Talk">
             Entrar e testar
           </Link>
         </div>
