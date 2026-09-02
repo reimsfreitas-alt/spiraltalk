@@ -16,10 +16,18 @@ function fallback(input:string,pacing:PacingDecision,policy:string):SpiralEngine
  if(!text)reply="Pode começar pelo ponto que estiver mais vivo agora.";
  else if(pacing.act==="CLOSE")reply="Tudo bem deixar isso por aqui.";
  else if(pacing.act==="CONTRADICT")reply="Então eu fui para um lugar que não era esse.";
- else if(policy==="answer")reply="Você trouxe uma pergunta concreta, e vale responder ao que foi perguntado antes de abrir outra frente.";
+ else if(policy==="answer") {
+  if(/\b(dormindo|sono|noites mal dormidas|calor|stress|estresse)\b/i.test(text))
+    reply="Se o problema é uma combinação de calor e estresse, eu começaria separando os dois fatores em vez de tentar resolver tudo de uma vez: tornar o quarto mais fresco e observar se isso muda a noite, enquanto você reduz o que mantém a cabeça acelerada perto de dormir. Se isso persistir, vale investigar o padrão com um profissional de saúde, porque noites mal dormidas podem ter várias causas.";
+  else reply="Você fez uma pergunta concreta. Vou responder ao que você perguntou, sem transformar a resposta em outra bateria de perguntas.";
+}
  else if(policy==="organize")reply="Tem elementos diferentes nessa fala que merecem ficar lado a lado, sem precisar resolver tudo de uma vez.";
  else if(policy==="pivot")reply="Vamos acompanhar essa nova direção.";
- else reply="Pode continuar a partir daí, sem precisar organizar isso antes.";
+ else if(/\b(dormindo|sono|noites mal dormidas|calor|stress|estresse)\b/i.test(text))
+  reply="Você está percebendo duas hipóteses bem concretas — calor e estresse — e as duas podem estar misturadas. Antes de procurar uma explicação maior, vale observar qual delas aparece com mais força nas noites em que o sono piora.";
+ else if(signals.intent==="be_heard" && signals.topic.length)
+  reply="Tem um ponto concreto no que você trouxe, e eu não vou empurrá-lo de volta para você com uma pergunta automática. Pode continuar; eu vou acompanhar o fio do que você está dizendo.";
+ else reply="Estou acompanhando o que você trouxe.";
  return{reply,structure:emptyStructure(text),safety_state:"normal",conversation_state:pacing.state};
 }
 function safetyRisk(input:string):boolean{return /\b(vou me matar|quero me matar|vou tirar minha vida|me matar hoje|suicid|me ferir|me machucar|não quero mais viver|nao quero mais viver)\b/i.test(input);}
