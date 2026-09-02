@@ -43,9 +43,20 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
     };
   }, []);
 
+  const stopListening = () => {
+    shouldKeepListeningRef.current = false;
+    recognitionRef.current?.stop();
+    setListening(false);
+  };
+
   const send = async (preset?: string) => {
     const text = (preset ?? input).trim();
     if (!text || loading) return;
+
+    // A voice turn ends when it is submitted. This prevents Safari/iOS
+    // speech recognition from writing the already-sent transcript back into
+    // the composer while the assistant is answering.
+    stopListening();
     setInput("");
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLoading(true);
@@ -62,9 +73,7 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
   const toggleMic = () => {
     const nativeWindow = window as SpeechRecognitionWindow;
     if (listening) {
-      shouldKeepListeningRef.current = false;
-      recognitionRef.current?.stop();
-      setListening(false);
+      stopListening();
       return;
     }
     const Recognition = nativeWindow.SpeechRecognition || nativeWindow.webkitSpeechRecognition;
@@ -78,7 +87,7 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
       let transcript = "";
       const resultList = event.results || {};
       for (let i = 0; resultList[i]; i += 1) transcript += resultList[i][0]?.transcript || "";
-      setInput(transcript.trim());
+      if (shouldKeepListeningRef.current) setInput(transcript.trim());
     };
     recognition.onend = () => {
       if (!shouldKeepListeningRef.current) { setListening(false); return; }
@@ -105,8 +114,7 @@ export default function ChatPage({ params }: { params: { sessionId: string } }) 
   };
 
   const close = async () => {
-    shouldKeepListeningRef.current = false;
-    recognitionRef.current?.stop();
+    stopListening();
     await fetch("/api/session/close", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: params.sessionId }) }).catch(() => undefined);
     router.push("/");
   };
