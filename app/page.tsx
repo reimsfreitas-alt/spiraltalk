@@ -3,7 +3,6 @@ import NightSky from "@/components/NightSky";
 import AmbientSound from "@/components/AmbientSound";
 import HorizonFigure from "@/components/HorizonFigure";
 import { resolveCommercialCta, PRICE_LABEL } from "@/lib/commerce/cta";
-
 export default function Page() {
   const cta = resolveCommercialCta(process.env.NEXT_PUBLIC_STRIPE_CHECKOUT_URL);
   return (
