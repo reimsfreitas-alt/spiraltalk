@@ -3,4 +3,41 @@ import { cookies } from "next/headers";
 import { FOUNDER_COOKIE, verifyFounderCookie } from "@/lib/founder/access";
 import { runMasterTurn } from "@/lib/spiral/master";
 import { deserializeState, serializeState } from "@/lib/spiral/state";
-export async function POST(req: Request) { try { const body=await req.json(); const input=typeof body?.input==="string"?body.input.trim():""; if(!input)return NextResponse.json({error:"Fala vazia."},{status:400}); if(input.length>4000)return NextResponse.json({error:"Fala muito longa."},{status:413}); const history=Array.isArray(body?.history)?body.history.filter((m:any)=>(m?.role==="user"||m?.role==="assistant")&&typeof m?.content==="string").slice(-8).map((m:any)=>({role:m.role as "user"|"assistant",content:m.content.slice(0,4000)})):[]; const state=deserializeState(typeof body?.state==="string"?body.state:null); const result=await runMasterTurn({history,input,state}); const isFounder=verifyFounderCookie(cookies().get(FOUNDER_COOKIE)?.value); return NextResponse.json({reply:result.reply,conversation_state:result.conversation_state,safety_state:result.safety_state,state:serializeState(result.state),...(isFounder?{trace:result.trace}:{})}); } catch { return NextResponse.json({error:"A conversa encontrou uma pausa. Tente novamente."},{status:500}); } }
+
+const MAX_CONTEXT_MESSAGES = 6;
+const MAX_MESSAGE_CHARS = 1800;
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const input = typeof body?.input === "string" ? body.input.trim() : "";
+    if (!input) return NextResponse.json({ error: "Fala vazia." }, { status: 400 });
+    if (input.length > 4000) return NextResponse.json({ error: "Fala muito longa." }, { status: 413 });
+
+    // Mantém o estado estruturado completo, mas reduz o payload textual enviado ao motor/LLM.
+    // Isso preserva a arquitetura adaptativa sem carregar transcrições antigas desnecessárias.
+    const history = Array.isArray(body?.history)
+      ? body.history
+          .filter((m: any) => (m?.role === "user" || m?.role === "assistant") && typeof m?.content === "string")
+          .slice(-MAX_CONTEXT_MESSAGES)
+          .map((m: any) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content.slice(0, MAX_MESSAGE_CHARS),
+          }))
+      : [];
+
+    const state = deserializeState(typeof body?.state === "string" ? body.state : null);
+    const result = await runMasterTurn({ history, input, state });
+    const isFounder = verifyFounderCookie(cookies().get(FOUNDER_COOKIE)?.value);
+
+    return NextResponse.json({
+      reply: result.reply,
+      conversation_state: result.conversation_state,
+      safety_state: result.safety_state,
+      state: serializeState(result.state),
+      ...(isFounder ? { trace: result.trace } : {}),
+    });
+  } catch {
+    return NextResponse.json({ error: "A conversa encontrou uma pausa. Tente novamente." }, { status: 500 });
+  }
+}
