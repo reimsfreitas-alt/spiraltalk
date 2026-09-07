@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { runCanonicalEngine } from "@/lib/spiral/engine";
+import { getAuthenticatedUser, hasActiveSpiralSubscription } from "@/lib/access";
 
 export async function POST(req: Request) {
   try {
+    const user = await getAuthenticatedUser();
+    if (!user?.email) return NextResponse.json({ error: "Faça login para continuar." }, { status: 401 });
+
+    const active = await hasActiveSpiralSubscription(user.email);
+    if (!active) return NextResponse.json({ error: "Assinatura necessária para continuar." }, { status: 402 });
+
     const body = await req.json();
     const input = typeof body?.input === "string" ? body.input.trim() : "";
     if (!input) return NextResponse.json({ error: "Fala vazia." }, { status: 400 });
