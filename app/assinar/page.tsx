@@ -1,24 +1,38 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const CHECKOUT_URL = "https://buy.stripe.com/dRm6oAfmXcEE0tp6Y3bbG05";
 
 export default function AssinarPage() {
+  const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const next = useMemo(() => {
     const value = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null;
     return value && value.startsWith("/") ? value : "/";
   }, []);
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
-  }, []);
+    createClient().auth.getUser().then(({ data }) => {
+      const userEmail = data.user?.email ?? null;
+      setEmail(userEmail);
+      setLoading(false);
+      if (!userEmail) router.replace(`/login?next=${encodeURIComponent(`/assinar?next=${next}`)}`);
+    });
+  }, [next, router]);
 
-  const checkout = email
-    ? `${CHECKOUT_URL}?prefilled_email=${encodeURIComponent(email)}`
-    : CHECKOUT_URL;
+  if (loading || !email) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6">
+        <p className="text-zinc-400">Preparando sua assinatura…</p>
+      </main>
+    );
+  }
+
+  const checkout = `${CHECKOUT_URL}?prefilled_email=${encodeURIComponent(email)}`;
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
@@ -33,7 +47,7 @@ export default function AssinarPage() {
         <a className="inline-flex w-full items-center justify-center rounded-xl bg-white text-black py-3 font-medium" href={checkout}>
           Assinar Spiral Talk
         </a>
-        {!email && <a className="block text-sm text-zinc-500 underline" href={`/login?next=${encodeURIComponent(next)}`}>Entrar com Google antes de assinar</a>}
+        <p className="text-xs text-zinc-600">Assinatura vinculada à conta {email}</p>
         <a className="block text-sm text-zinc-500" href="/">Voltar</a>
       </div>
     </main>
