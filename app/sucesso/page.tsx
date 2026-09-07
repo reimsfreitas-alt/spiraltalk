@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function SuccessPage() {
+function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [message, setMessage] = useState("Verificando sua assinatura…");
@@ -57,5 +57,13 @@ export default function SuccessPage() {
         <p className="text-zinc-400">{message}</p>
       </div>
     </main>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen flex items-center justify-center p-6"><p className="text-zinc-400">Verificando sua assinatura…</p></main>}>
+      <SuccessContent />
+    </Suspense>
   );
 }
