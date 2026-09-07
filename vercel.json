@@ -1,4 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "alias": ["spiraltalk.vercel.app"]
+  "alias": ["spiraltalk.vercel.app"],
+  "redirects": [
+    {
+      "source": "/apresentacao",
+      "destination": "https://spiral-talk-71z7j1.v2.appdeploy.ai/apresentacao",
+      "permanent": false
+    }
+  ]
 }
