@@ -24,6 +24,7 @@ export default function Page() {
         <Link className="launch-cta" href="/chat/new">Falar agora</Link>
         <div className="launch-price">Depois do teste · <strong>R$ 29,90/mês</strong></div>
         <a className="launch-secondary-cta" href={CHECKOUT_URL}>Assinar Spiral Talk · R$ 29,90/mês</a>
+        <Link className="launch-secondary-cta" href="/apresentacao">Ver apresentação</Link>
         <p className="launch-note">Ferramenta de reflexão pessoal. Não substitui atendimento profissional.</p>
       </section>
     </main>
