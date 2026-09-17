@@ -9,6 +9,8 @@ import { qualityGate } from "./quality";
 import type { SpiralEngineOutput, SpiralStructure, ConversationState } from "./types";
 
 type HistoryMessage={role:"user"|"assistant";content:string};
+export type SpiralLearning={helpful:number;misfit:number;alternative:number;turns:number};
+export type SpiralFeedback={type:"helpful"|"misfit"|"alternative";note?:string};
 const MAX_HISTORY=12;
 
 function emptyStructure(input:string):SpiralStructure{
@@ -61,7 +63,9 @@ function promptFor(
   signals:string,
   memories:string,
   topicGraph:string,
-  revision:string
+  revision:string,
+  learning:SpiralLearning,
+  feedback?:SpiralFeedback
 ):string{
   const state=({
     holding:"Dê espaço; uma observação curta ou uma organização parcial pode ser melhor que uma pergunta.",
@@ -71,6 +75,12 @@ function promptFor(
     pivoting:"Acompanhe a nova direção sem puxar a pessoa de volta.",
     closing:"Encerre sem reabrir o tema."
   } as Record<string,string>)[pacing.state];
+
+  const feedbackInstruction=feedback
+    ? "\nFEEDBACK DO USUÁRIO SOBRE A INTERVENÇÃO ANTERIOR: tipo="+feedback.type+
+      (feedback.note?" | nota="+feedback.note:"")+
+      "\nTrate este feedback como evidência sobre a utilidade da intervenção anterior. Não defenda a resposta anterior; ajuste a próxima intervenção."
+    : "";
 
   return SYSTEM_PROMPT+
     "\n\nPLANO DO MOTOR (OBEDEÇA):"+
@@ -85,12 +95,20 @@ function promptFor(
     "\nsinais="+signals+
     "\nmemória_epistêmica="+memories+
     "\ntopic_graph="+topicGraph+
+    "\naprendizado_local="+JSON.stringify(learning)+
+    feedbackInstruction+
     "\n"+state+
     "\n"+revision+
-    "\nREGRAS DE EXECUÇÃO: responda ao turno atual; pedido de resposta ou solução exige resposta concreta antes de qualquer pergunta; não use abertura genérica; não repita a função da última intervenção; correção invalida hipótese anterior; não invente fatos, memória ou causalidade; se houver dúvida, declare a incerteza em vez de inventar; JSON válido.";
+    "\nREGRAS DE EXECUÇÃO: responda ao turno atual; pedido de resposta ou solução exige resposta concreta antes de qualquer pergunta; não use abertura genérica; não repita a função da última intervenção; correção invalida hipótese anterior; não invente fatos, memória ou causalidade; se houver dúvida, declare a incerteza em vez de inventar; JSON válido."+
+    "\nADAPTAÇÃO: use o aprendizado como preferência operacional, não como diagnóstico. Se misfit estiver alto, reduza perguntas e aumente fidelidade literal. Se alternative estiver alto, mude explicitamente a estratégia em vez de apenas reformular a mesma resposta. Se helpful estiver alto, preserve o tipo de intervenção que acabou de funcionar.";
 }
 
-export async function runCanonicalEngine(history:HistoryMessage[],input:string):Promise<SpiralEngineOutput>{
+export async function runCanonicalEngine(
+  history:HistoryMessage[],
+  input:string,
+  feedback?:SpiralFeedback,
+  learning:SpiralLearning={helpful:0,misfit:0,alternative:0,turns:0}
+):Promise<SpiralEngineOutput>{
   const cleanHistory=history.slice(-MAX_HISTORY);
   const pacing=choosePacing({history:cleanHistory,input});
   const signals=extractSignals(input,pacing.act);
@@ -122,7 +140,7 @@ export async function runCanonicalEngine(history:HistoryMessage[],input:string):
       const r=await ai.models.generateContent({
         model:"gemini-2.5-flash",
         config:{
-          systemInstruction:promptFor(pacing,policy,plan,JSON.stringify(signals),JSON.stringify(memory),JSON.stringify(topicGraph),revision),
+          systemInstruction:promptFor(pacing,policy,plan,JSON.stringify(signals),JSON.stringify(memory),JSON.stringify(topicGraph),revision,learning,feedback),
           responseMimeType:"application/json"
         },
         contents
@@ -137,7 +155,6 @@ export async function runCanonicalEngine(history:HistoryMessage[],input:string):
         if(structure.decision_state!=="decision")structure.declared_decision=null;
         const validStates=["holding","mirroring","deepening","juxtaposing","pivoting","closing"];
         const conversationState:ConversationState=validStates.includes(parsed.conversation_state)?parsed.conversation_state:pacing.state;
-
         return{
           reply,
           structure,
