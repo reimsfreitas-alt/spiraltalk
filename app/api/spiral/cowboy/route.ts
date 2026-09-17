@@ -59,7 +59,8 @@ export async function POST(req:Request){
       : undefined;
     const learning=safeLearning(body?.learning);
 
-    const engine=await runCanonicalEngine(history,text,feedback,learning);
+    const engineHistory=feedback&&history.length>=2?history.slice(0,-2):history;
+    const engine=await runCanonicalEngine(engineHistory,text,feedback,learning);
     const threads=threadsFromEngine(engine.reply,engine.structure);
     const nextStep=engine.structure?.alternatives?.[0]
       || engine.structure?.open_questions?.[0]
