@@ -41,8 +41,11 @@ export default function Cowboy(){
   const [history,setHistory]=useState<Turn[]>([]);
   const [learning,setLearning]=useState<Learning>(emptyLearning);
   const [feedback,setFeedback]=useState<FeedbackType|null>(null);
+  const [voiceUrl,setVoiceUrl]=useState("");
+  const [voiceLoading,setVoiceLoading]=useState(false);
   const recognitionRef=useRef<SpeechRecognitionLike|null>(null);
   const micStreamRef=useRef<MediaStream|null>(null);
+  const audioRef=useRef<HTMLAudioElement|null>(null);
 
   useEffect(()=>{
     try{
@@ -53,12 +56,39 @@ export default function Cowboy(){
       recognitionRef.current?.stop();
       micStreamRef.current?.getTracks().forEach(track=>track.stop());
       window.speechSynthesis?.cancel();
+      audioRef.current?.pause();
+      if(voiceUrl)URL.revokeObjectURL(voiceUrl);
     };
+  },[voiceUrl]);
   },[]);
 
   function saveLearning(next:Learning){
     setLearning(next);
     try{localStorage.setItem("spiral-talk-learning-v2",JSON.stringify(next));}catch{}
+  }
+
+  async function prepareVoice(reply:string,nextStep:string){
+    const textToSpeak=[reply,nextStep?"Próximo passo: "+nextStep:""].filter(Boolean).join(". ").trim();
+    if(!textToSpeak)return;
+    setVoiceLoading(true);
+    try{
+      const r=await fetch("/api/spiral/cowboy/voice",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:textToSpeak})
+      });
+      if(!r.ok)throw new Error("voice");
+      const blob=await r.blob();
+      const url=URL.createObjectURL(blob);
+      setVoiceUrl(prev=>{
+        if(prev)URL.revokeObjectURL(prev);
+        return url;
+      });
+    }catch{
+      setVoiceUrl("");
+    }finally{
+      setVoiceLoading(false);
+    }
   }
 
   async function reorganize(feedbackType?:FeedbackType, valueOverride?:string, learningOverride?:Learning){
@@ -81,6 +111,7 @@ export default function Cowboy(){
       if(!r.ok)throw new Error(d.error||"Falha");
       setResult(d);
       setFeedback(feedbackType||null);
+      void prepareVoice(String(d.reply||d.synthesis||""),String(d.nextStep||""));
       if(!feedbackType){
         setHistory(prev=>[...prev,{role:"user",content:value},{role:"assistant",content:String(d.reply||d.synthesis||"")}].slice(-12));
         setText("");
@@ -154,36 +185,42 @@ export default function Cowboy(){
 
   function speakResult(){
     if(!result)return;
+    if(audioRef.current){
+      if(!audioRef.current.paused){
+        audioRef.current.pause();
+        audioRef.current.currentTime=0;
+        setSpeaking(false);
+        return;
+      }
+      if(voiceUrl){
+        audioRef.current.src=voiceUrl;
+        audioRef.current.onplay=()=>setSpeaking(true);
+        audioRef.current.onended=()=>setSpeaking(false);
+        audioRef.current.onerror=()=>setSpeaking(false);
+        void audioRef.current.play().catch(()=>setSpeaking(false));
+        return;
+      }
+    }
+
+    // Fallback local speech when server TTS is still preparing or unavailable.
     const synth=window.speechSynthesis;
     if(!synth){
-      setError("A voz não está disponível neste navegador. Abra o Spiral Talk no Safari ou Chrome atualizado.");
+      setError("A voz ainda está sendo preparada. Tente novamente em alguns segundos.");
       return;
     }
-    if(speaking){
-      synth.cancel();
-      setSpeaking(false);
-      return;
-    }
+    if(speaking){synth.cancel();setSpeaking(false);return;}
     const textToSpeak=[result.synthesis,result.nextStep?"Próximo passo: "+result.nextStep:""]
       .filter(Boolean).join(". ").replace(/[#*_]/g,"").replace(/\s+/g," ").trim();
     if(!textToSpeak){setError("Não há resposta para ouvir ainda.");return;}
-    setError("");
     synth.cancel();
-    const voices=synth.getVoices();
-    const voice=voices.find(v=>/^pt-BR$/i.test(v.lang))||voices.find(v=>/^pt[-_]BR/i.test(v.lang))||voices.find(v=>/^pt/i.test(v.lang));
-    const chunks=textToSpeak.match(/.{1,180}(?:\s+|$)/g)||[textToSpeak];
-    let index=0;
+    const voice=synth.getVoices().find(v=>/^pt-BR$/i.test(v.lang))||synth.getVoices().find(v=>/^pt/i.test(v.lang));
+    const u=new SpeechSynthesisUtterance(textToSpeak);
+    u.lang="pt-BR";u.rate=.92;u.pitch=1;
+    if(voice)u.voice=voice;
+    u.onend=()=>setSpeaking(false);
+    u.onerror=()=>{setSpeaking(false);setError("A voz não pôde ser reproduzida neste dispositivo.");};
     setSpeaking(true);
-    const speakNext=()=>{
-      if(index>=chunks.length){setSpeaking(false);return;}
-      const u=new SpeechSynthesisUtterance(chunks[index++].trim());
-      u.lang="pt-BR";u.rate=.92;u.pitch=1;
-      if(voice)u.voice=voice;
-      u.onend=speakNext;
-      u.onerror=()=>{synth.cancel();setSpeaking(false);setError("A resposta apareceu, mas o navegador não reproduziu a voz. Toque em “Ouvir o Spiral” novamente.");};
-      synth.speak(u);
-    };
-    speakNext();
+    synth.speak(u);
   }
 
   function newConversation(){
@@ -227,7 +264,7 @@ export default function Cowboy(){
       </div>
 
       <div className="cowboy-result-actions">
-        <button onClick={speakResult}>{speaking?"■ Parar voz":"◉ Ouvir o Spiral"}</button>
+        <button onClick={speakResult}>{speaking?"■ Parar voz":voiceLoading?"◌ Preparando voz…":"◉ Ouvir o Spiral"}</button><audio ref={audioRef} preload="auto" />
         <button onClick={()=>{setResult(null);setText("")}}>Continuar falando</button>
         <button onClick={newConversation}>Nova conversa</button>
       </div>
