@@ -76,10 +76,14 @@ function promptFor(
     closing:"Encerre sem reabrir o tema."
   } as Record<string,string>)[pacing.state];
 
+  const totalFeedback=learning.helpful+learning.misfit+learning.alternative;
+  const misfitRate=totalFeedback?learning.misfit/totalFeedback:0;
+  const alternativeRate=totalFeedback?learning.alternative/totalFeedback:0;
+  const helpfulRate=totalFeedback?learning.helpful/totalFeedback:0;
   const feedbackInstruction=feedback
-    ? "\nFEEDBACK DO USUÁRIO SOBRE A INTERVENÇÃO ANTERIOR: tipo="+feedback.type+
+    ? "\\nFEEDBACK DO USUÁRIO SOBRE A INTERVENÇÃO ANTERIOR: tipo="+feedback.type+
       (feedback.note?" | nota="+feedback.note:"")+
-      "\nTrate este feedback como evidência sobre a utilidade da intervenção anterior. Não defenda a resposta anterior; ajuste a próxima intervenção."
+      "\\nTrate este feedback como evidência sobre a utilidade da intervenção anterior. Não defenda a resposta anterior; ajuste a próxima intervenção."
     : "";
 
   return SYSTEM_PROMPT+
@@ -100,7 +104,7 @@ function promptFor(
     "\n"+state+
     "\n"+revision+
     "\nREGRAS DE EXECUÇÃO: responda ao turno atual; pedido de resposta ou solução exige resposta concreta antes de qualquer pergunta; não use abertura genérica; não repita a função da última intervenção; correção invalida hipótese anterior; não invente fatos, memória ou causalidade; se houver dúvida, declare a incerteza em vez de inventar; JSON válido."+
-    "\nADAPTAÇÃO: use o aprendizado como preferência operacional, não como diagnóstico. Se misfit estiver alto, reduza perguntas e aumente fidelidade literal. Se alternative estiver alto, mude explicitamente a estratégia em vez de apenas reformular a mesma resposta. Se helpful estiver alto, preserve o tipo de intervenção que acabou de funcionar.";
+    "\nADAPTAÇÃO: use o aprendizado como preferência operacional, não como diagnóstico. Considere taxas, não apenas contagens: misfitRate="+misfitRate.toFixed(2)+"; alternativeRate="+alternativeRate.toFixed(2)+"; helpfulRate="+helpfulRate.toFixed(2)+". Se misfitRate >= 0.35, reduza perguntas, encurte a resposta e aumente a fidelidade literal. Se alternativeRate >= 0.35, mude explicitamente a estratégia. Se helpfulRate >= 0.55 e misfitRate < 0.25, preserve o tipo de intervenção que tem funcionado. Nunca use o histórico de feedback para inferir traços psicológicos.";
 }
 
 export async function runCanonicalEngine(
