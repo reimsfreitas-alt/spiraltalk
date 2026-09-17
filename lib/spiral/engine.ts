@@ -81,9 +81,9 @@ function promptFor(
   const alternativeRate=totalFeedback?learning.alternative/totalFeedback:0;
   const helpfulRate=totalFeedback?learning.helpful/totalFeedback:0;
   const feedbackInstruction=feedback
-    ? "\\nFEEDBACK DO USUÁRIO SOBRE A INTERVENÇÃO ANTERIOR: tipo="+feedback.type+
+    ? "\nFEEDBACK DO USUÁRIO SOBRE A INTERVENÇÃO ANTERIOR: tipo="+feedback.type+
       (feedback.note?" | nota="+feedback.note:"")+
-      "\\nTrate este feedback como evidência sobre a utilidade da intervenção anterior. Não defenda a resposta anterior; ajuste a próxima intervenção."
+      "\nTrate este feedback como evidência sobre a utilidade da intervenção anterior. Não defenda a resposta anterior; ajuste a próxima intervenção."
     : "";
 
   return SYSTEM_PROMPT+
