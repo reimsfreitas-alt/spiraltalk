@@ -60,7 +60,6 @@ export default function Cowboy(){
       if(voiceUrl)URL.revokeObjectURL(voiceUrl);
     };
   },[voiceUrl]);
-  },[]);
 
   function saveLearning(next:Learning){
     setLearning(next);
