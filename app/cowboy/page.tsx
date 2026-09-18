@@ -112,7 +112,7 @@ export default function Cowboy(){
       setFeedback(feedbackType||null);
       void prepareVoice(String(d.reply||d.synthesis||""),String(d.nextStep||""));
       if(!feedbackType){
-        setHistory(prev=>[...prev,{role:"user",content:value},{role:"assistant",content:String(d.reply||d.synthesis||"")}].slice(-12));
+        setHistory(prev=>[...prev,{role:"user" as const,content:value},{role:"assistant" as const,content:String(d.reply||d.synthesis||"")}].slice(-12));
         setText("");
         saveLearning({...activeLearning,turns:activeLearning.turns+1});
       }
